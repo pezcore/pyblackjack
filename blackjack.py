@@ -6,9 +6,10 @@ H17 = True
 
 class Hand (deque):
 
-    def __init__(self, it=(), **kwargs):
+    def __init__(self, it=(), wager=2, **kwargs):
         self.value = 0
         self.soft = False
+        self.wager = wager
         for i in it:
             self.append(i if isinstance(i, str) and i in "TJQKA" else int(i))
 
@@ -31,6 +32,45 @@ class Hand (deque):
     def __str__(self):
         return "".join(map(str, self))
 
+    def comp(self, dealer):
+        if self.bust or (dealer.blackjack and not self.blackjack):
+            outcome = "L"
+            delta = -self.wager
+        else:
+            dealer.play(shoe)
+
+            if self.blackjack and not dealer.blackjack:
+                outcome = "B"
+                delta = 3 * self.wager / 2
+            elif self.value > dealer.value or dealer.value > 21:
+                outcome = "W"
+                delta = self.wager
+            elif self.value < dealer.value:
+                outcome = "L"
+                delta = -self.wager
+            else:
+                outcome = "P"
+                delta = 0
+        return outcome, delta
+
+    def draw(self, shoe):
+        self.clear()
+        self.append(shoe.pop())
+        self.append(shoe.pop())
+
+    def play(self, shoe, dealer_up="?"):
+        while self.value < 17:
+            self.append(shoe.pop())
+        if H17 and self.value == 17 and self.soft:
+            self.append(shoe.pop())
+
+    def split(self, shoe):
+        new = Hand()
+        new.append(self.pop())
+        self.append(shoe.pop())
+        new.append(shoe.pop())
+        return new
+
     @property
     def blackjack(self):
         return self.value == 21 and len(self) == 2
@@ -39,50 +79,30 @@ class Hand (deque):
     def bust(self):
         return self.value > 21
 
-class Player (Hand):
+class Player (list):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def play(self, shoe, dealer_up):
+        this_hand = self[-1]
+        # if all(x == "A" for x in this_hand) or all(x == 8 for x in this_hand):
 
-    def play(self, shoe, dealer_up="?"):
-        while self.value < 17:
-            self.append(shoe.pop())
-        if H17 and self.value == 17 and self.soft:
-            self.append(shoe.pop())
         
-
 # Start of game
 shoe = DECK * 8
 shuffle(shoe)
 bankroll = 0
+dealer = Hand()
+player = Hand()
 
 while len(shoe) > 15:
 
     # Deal out player and dealer
-    dealer = Player([shoe.pop(), shoe.pop()])
-    player = Player([shoe.pop(), shoe.pop()])
+    dealer.draw(shoe)
+    player.draw(shoe)
 
     # player naively plays like a dealer:
-    player.play(shoe)
-
-    if player.bust or (dealer.blackjack and not player.blackjack):
-        outcome = "L"
-        bankroll -= 2
-    else:
-        dealer.play(shoe)
-
-        if player.blackjack and not dealer.blackjack:
-            outcome = "B"
-            bankroll += 3
-        elif player.value > dealer.value or dealer.value > 21:
-            outcome = "W"
-            bankroll += 2
-        elif player.value < dealer.value:
-            outcome = "L"
-            bankroll -= 2
-        else:
-            outcome = "P"
-
+    player.play(shoe, dealer[0])
+    outcome, delta = player.comp(dealer)
+    bankroll += delta
 
     print(
         f"{str(player):7} {str(dealer):7} {player.value:2} {dealer.value:2}",
