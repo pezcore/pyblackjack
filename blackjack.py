@@ -32,27 +32,6 @@ class Hand (deque):
     def __str__(self):
         return "".join(map(str, self))
 
-    def comp(self, dealer):
-        if self.bust or (dealer.blackjack and not self.blackjack):
-            outcome = "L"
-            delta = -self.wager
-        else:
-            dealer.play(shoe)
-
-            if self.blackjack and not dealer.blackjack:
-                outcome = "B"
-                delta = 3 * self.wager / 2
-            elif self.value > dealer.value or dealer.value > 21:
-                outcome = "W"
-                delta = self.wager
-            elif self.value < dealer.value:
-                outcome = "L"
-                delta = -self.wager
-            else:
-                outcome = "P"
-                delta = 0
-        return outcome, delta
-
     def draw(self, shoe):
         self.clear()
         self.append(shoe.pop())
@@ -79,6 +58,38 @@ class Hand (deque):
     def bust(self):
         return self.value > 21
 
+    def __sub__(self, dealer):
+        if self << dealer or self.bust:
+            return "L"
+        if dealer << self:
+            return "B"
+        if self > dealer or dealer.bust:
+            return "W"
+        if self < dealer:
+            return "L"
+        return "P"
+
+        if self.bust or (self.value < dealer.value and dealer.value <= 21):
+            return "L"
+
+    def __lt__(self, other):
+        return self.value < (other.value if isinstance(other, Hand) else other)
+
+    def __gt__(self, other):
+        return self.value > (other.value if isinstance(other, Hand) else other)
+
+    def __lshift__(self, dealer):
+        """
+        Return True iff the right operand is a blackjack and the left one isn't.
+
+        With the left operand representing the player Hand and the right
+        operand representing the dealer Hand, This indicates the initial
+        deal outcome where the player position in this game is
+        immediately determined a loss.
+        """
+        return (dealer.blackjack and not self.blackjack)
+
+
 class Player (list):
 
     def play(self, shoe, dealer_up):
@@ -99,12 +110,25 @@ while len(shoe) > 15:
     dealer.draw(shoe)
     player.draw(shoe)
 
-    # player naively plays like a dealer:
-    player.play(shoe, dealer[0])
-    outcome, delta = player.comp(dealer)
-    bankroll += delta
+    if player << dealer:
+        outcome = "L"
+        bankroll -= player.wager
+    else:
+        # player naively plays like a dealer:
+        player.play(shoe, dealer[0])
+
+        if player.bust:
+            outcome = "L"
+            bankroll -= player.wager
+        else:
+            dealer.play(shoe)
+            outcome = player - dealer
+            bankroll += (player.wager if outcome == "W" else
+                         -player.wager if outcome == "L" else
+                         3 * player.wager / 2 if outcome == "B" else 0)
 
     print(
         f"{str(player):7} {str(dealer):7} {player.value:2} {dealer.value:2}",
-        outcome, f"{bankroll:3}")
+        outcome, f"{bankroll:6.1f} {8 * 52 - len(shoe):3d}"
+    )
 
