@@ -62,7 +62,7 @@ class Hand (deque):
         if self << dealer or self.bust:
             return "L"
         if dealer << self:
-            return "B"
+            return "J"
         if self > dealer or dealer.bust:
             return "W"
         if self < dealer:
@@ -105,7 +105,7 @@ class Player (list):
         del self[1:]
         self[0].draw(shoe)
 
-        
+
 # Start of game
 shoe = DECK * 8
 shuffle(shoe)
@@ -119,23 +119,23 @@ while len(shoe) > 15:
     dealer.draw(shoe)
     player.draw(shoe)
 
-    if player[0] << dealer:
-        outcome = "L"
-        bankroll -= player[0].wager
-    else:
-        # player plays the game
+    if not player[0] << dealer:
         player.play(shoe, dealer[0])
 
     for i, playerhand in enumerate(player):
-        if playerhand.bust:
-            outcome = "L"
+
+        if playerhand << dealer:
+            outcome = "R"
+            bankroll -= player[0].wager
+        elif playerhand.bust:
+            outcome = "B"
             bankroll -= playerhand.wager
         else:
             dealer.play(shoe)
             outcome = playerhand - dealer
             bankroll += (playerhand.wager if outcome == "W" else
                         -playerhand.wager if outcome == "L" else
-                        3 * playerhand.wager / 2 if outcome == "B" else 0)
+                        3 * playerhand.wager / 2 if outcome == "J" else 0)
 
         print(
             f"{str(playerhand):7} {str(dealer):7}", "*" if i else " ",
