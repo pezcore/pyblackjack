@@ -37,7 +37,7 @@ class Hand (deque):
         self.append(shoe.pop())
         self.append(shoe.pop())
 
-    def play(self, shoe, dealer_up="?"):
+    def play(self, shoe):
         while self.value < 17:
             self.append(shoe.pop())
         if H17 and self.value == 17 and self.soft:
@@ -93,8 +93,17 @@ class Hand (deque):
 class Player (list):
 
     def play(self, shoe, dealer_up):
-        this_hand = self[-1]
-        # if all(x == "A" for x in this_hand) or all(x == 8 for x in this_hand):
+        for hand in self:
+            if all(x == "A" for x in hand) or all(x == 8 for x in hand):
+                newhand = Hand([hand.pop()])
+                newhand.append(shoe.pop())
+                self.append(newhand)
+                hand.append(shoe.pop())
+            hand.play(shoe)
+
+    def draw(self, shoe):
+        del self[1:]
+        self[0].draw(shoe)
 
         
 # Start of game
@@ -102,7 +111,7 @@ shoe = DECK * 8
 shuffle(shoe)
 bankroll = 0
 dealer = Hand()
-player = Hand()
+player = Player([Hand()])
 
 while len(shoe) > 15:
 
@@ -110,25 +119,26 @@ while len(shoe) > 15:
     dealer.draw(shoe)
     player.draw(shoe)
 
-    if player << dealer:
+    if player[0] << dealer:
         outcome = "L"
-        bankroll -= player.wager
+        bankroll -= player[0].wager
     else:
-        # player naively plays like a dealer:
+        # player plays the game
         player.play(shoe, dealer[0])
 
-        if player.bust:
+    for i, playerhand in enumerate(player):
+        if playerhand.bust:
             outcome = "L"
-            bankroll -= player.wager
+            bankroll -= playerhand.wager
         else:
             dealer.play(shoe)
-            outcome = player - dealer
-            bankroll += (player.wager if outcome == "W" else
-                         -player.wager if outcome == "L" else
-                         3 * player.wager / 2 if outcome == "B" else 0)
+            outcome = playerhand - dealer
+            bankroll += (playerhand.wager if outcome == "W" else
+                        -playerhand.wager if outcome == "L" else
+                        3 * playerhand.wager / 2 if outcome == "B" else 0)
 
-    print(
-        f"{str(player):7} {str(dealer):7} {player.value:2} {dealer.value:2}",
-        outcome, f"{bankroll:6.1f} {8 * 52 - len(shoe):3d}"
-    )
-
+        print(
+            f"{str(playerhand):7} {str(dealer):7}", "*" if i else " ",
+            f"{playerhand.value:2} {dealer.value:2}",
+            outcome, f"{bankroll:6.1f} {8 * 52 - len(shoe):3d}"
+        )
