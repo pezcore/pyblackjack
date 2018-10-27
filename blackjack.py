@@ -4,7 +4,7 @@ from collections import deque
 DECK = ["A", 2, 3, 4, 5, 6, 7, 8, 9, "T", "J", "Q", "K"] * 4
 H17 = True
 
-class Hand (deque):
+class Hand(deque):
 
     def __init__(self, it=(), wager=2, **kwargs):
         self.value = 0
@@ -27,7 +27,7 @@ class Hand (deque):
     def clear(self):
         super().clear()
         self.value = 0
-        self.soft = False 
+        self.soft = False
 
     def __str__(self):
         return "".join(map(str, self))
@@ -69,9 +69,6 @@ class Hand (deque):
             return "L"
         return "P"
 
-        if self.bust or (self.value < dealer.value and dealer.value <= 21):
-            return "L"
-
     def __lt__(self, other):
         return self.value < (other.value if isinstance(other, Hand) else other)
 
@@ -87,10 +84,10 @@ class Hand (deque):
         deal outcome where the player position in this game is
         immediately determined a loss.
         """
-        return (dealer.blackjack and not self.blackjack)
+        return dealer.blackjack and not self.blackjack
 
 
-class Player (list):
+class Player(list):
 
     def play(self, shoe, dealer_up):
         for hand in self:
